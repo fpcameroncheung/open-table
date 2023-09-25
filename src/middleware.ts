@@ -6,13 +6,17 @@ import { NextRequest, NextResponse } from "next/server";
 // 	matcher: ["/api/auth/me"],
 // };
 
-const authorizationPaths = ["/api/auth/me"];
+const authorizationPaths = ["/api/auth/something"];
 
 export async function middleware(request: NextRequest) {
 	if (pathIncludes(request, authorizationPaths)) {
 		console.log("Middleware - authorizationMiddleware");
 		const isValid = await authorizationMiddleware(request);
-		if (!isValid) return NextResponse.json({ errorMessage: "Unauthorized to make this request" }, { status: 401 });
+		if (!isValid)
+			return NextResponse.json(
+				{ errorMessage: "Unauthorized to make this request" },
+				{ status: 401 }
+			);
 	}
 }
 

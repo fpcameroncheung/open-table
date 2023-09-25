@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import validator from "validator";
 import bcrypt from "bcrypt";
 import * as jose from "jose";
+import { cookies } from "next/dist/client/components/headers";
 
 var prisma = new PrismaClient();
 
@@ -54,7 +55,10 @@ export async function POST(request: Request) {
 	});
 
 	if (userWithEmail) {
-		return NextResponse.json({ errorMessage: "Account with this email already exists" }, { status: 400 });
+		return NextResponse.json(
+			{ errorMessage: "Account with this email already exists" },
+			{ status: 400 }
+		);
 	}
 
 	const hashedPassword = await bcrypt.hash(password, 10);
@@ -73,7 +77,26 @@ export async function POST(request: Request) {
 	const alg = "HS256";
 	const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-	const token = await new jose.SignJWT({ email: user.email }).setProtectedHeader({ alg }).setExpirationTime("24h").sign(secret);
+	const token = await new jose.SignJWT({ email: user.email })
+		.setProtectedHeader({ alg })
+		.setExpirationTime("24h")
+		.sign(secret);
 
-	return NextResponse.json({ token }, { status: 200 });
+	cookies().set({
+		name: "jwt",
+		value: token,
+		path: "/",
+	});
+
+	// return NextResponse.json({ token }, { status: 200 });
+	return NextResponse.json(
+		{
+			firstName: user.first_name,
+			lastName: user.last_name,
+			email: user.email,
+			phone: user.phone,
+			city: user.city,
+		},
+		{ status: 200 }
+	);
 }

@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import validator from "validator";
 import bcrypt from "bcrypt";
 import * as jose from "jose";
+import { setCookie } from "cookies-next";
+import { cookies } from "next/dist/client/components/headers";
 
 var prisma = new PrismaClient();
 
@@ -31,22 +33,49 @@ export async function POST(request: Request) {
 		return NextResponse.json(errors, { status: 400 });
 	}
 
-	const userWithEmail = await prisma.user.findUnique({
+	const user = await prisma.user.findUnique({
 		where: {
 			email: email,
 		},
 	});
 
-	if (!userWithEmail) return NextResponse.json({ errorMessage: "Email or password is invalid" }, { status: 401 });
+	if (!user)
+		return NextResponse.json(
+			{ errorMessage: "Email or password is invalid" },
+			{ status: 401 }
+		);
 
-	const passwordIsMatch = await bcrypt.compare(password, userWithEmail.password);
+	const passwordIsMatch = await bcrypt.compare(password, user.password);
 
-	if (!passwordIsMatch) return NextResponse.json({ errorMessage: "Email or password is invalid" }, { status: 401 });
+	if (!passwordIsMatch)
+		return NextResponse.json(
+			{ errorMessage: "Email or password is invalid" },
+			{ status: 401 }
+		);
 
 	const alg = "HS256";
 	const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-	const token = await new jose.SignJWT({ email: userWithEmail.email }).setProtectedHeader({ alg }).setExpirationTime("24h").sign(secret);
+	const token = await new jose.SignJWT({ email: user.email })
+		.setProtectedHeader({ alg })
+		.setExpirationTime("24h")
+		.sign(secret);
 
-	return NextResponse.json({ token }, { status: 200 });
+	cookies().set({
+		name: "jwt",
+		value: token,
+		path: "/",
+	});
+
+	// return NextResponse.json({ token }, { status: 200 });
+	return NextResponse.json(
+		{
+			firstName: user.first_name,
+			lastName: user.last_name,
+			email: user.email,
+			phone: user.phone,
+			city: user.city,
+		},
+		{ status: 200 }
+	);
 }
